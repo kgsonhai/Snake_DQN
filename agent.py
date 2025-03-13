@@ -100,7 +100,7 @@ def train():
     record = 0
     agent = Agent()
     game = SnakeGameAI()
-    rolling_window = deque(maxlen=50)
+    rolling_window = deque(maxlen=100)
 
     with open("output.txt", "a") as file:
         while True:
