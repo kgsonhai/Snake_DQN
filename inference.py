@@ -1,16 +1,28 @@
 import torch
-import numpy as np
 import pygame
+import random
+import numpy as np
+from collections import namedtuple
 from game import SnakeGameAI, Direction, Point
 from model import Linear_QNet
 
-device = torch.device("cpu")
+pygame.init()
+
+Point = namedtuple("Point", "x, y")
+
+YELLOW = (255, 255, 102)
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (50, 153, 213)
+
+BLOCK_SIZE = 20
+FRAMESPEED = 40
 
 
-class InferenceAgent:
-    def __init__(self, model_path):
+class SnakeAgent:
+    def __init__(self):
         self.model = Linear_QNet(11, 256, 3)
-        self.model.load_state_dict(torch.load(model_path, map_location=device))
+        self.model.load_state_dict(torch.load("model/model.pth"))
         self.model.eval()
 
     def get_state(self, game):
@@ -47,20 +59,22 @@ class InferenceAgent:
             game.food.y < game.head.y,
             game.food.y > game.head.y,
         ]
+
         return np.array(state, dtype=int)
 
     def get_action(self, state):
-        state0 = torch.tensor(np.array(state), dtype=torch.float).to(device)
+        state0 = torch.tensor(state, dtype=torch.float)
         prediction = self.model(state0)
         move = torch.argmax(prediction).item()
+
         final_move = [0, 0, 0]
         final_move[move] = 1
         return final_move
 
 
-def run_game(model_path):
-    agent = InferenceAgent(model_path)
+def GameLoop(agent):
     game = SnakeGameAI()
+    clock = pygame.time.Clock()
 
     while True:
         state = agent.get_state(game)
@@ -68,14 +82,25 @@ def run_game(model_path):
         reward, done, score = game.play_step(action)
 
         if done:
-            print(f"Game Over! Final Score: {score}")
+            print(f"Final Score: {score}")
             break
 
+        clock.tick(FRAMESPEED)
 
-if __name__ == "__main__":
-    try:
-        model_path = "model/model.pth"
-        run_game(model_path)
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        pygame.quit()
+    return score
+
+
+def KeepWindowOpen():
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                waiting = False
+    pygame.quit()
+
+
+agent = SnakeAgent()
+
+print("Running Snake AI Inference...")
+score = GameLoop(agent)
+KeepWindowOpen()
